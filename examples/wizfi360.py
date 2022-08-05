@@ -94,7 +94,10 @@ class WIZFI360:
         elif WIZFI360_FAIL_STATUS in self.__rxData:
             return self.__rxData
         elif WIZFI360_BUSY_STATUS in self.__rxData:
-            return self.__rxData#return "ESP BUSY\r\n"
+            if WIZFI360_OK_STATUS in self.__rxData:
+                return self.__rxData
+            else:
+                return "ESP BUSY\r\n"
         else:
             return None
         
@@ -354,12 +357,12 @@ class WIZFI360:
             WIFI CONNECTED when WIZFI360 successfully connect with the target AP
         """
         txData="AT+CWJAP_CUR="+'"'+ssid+'"'+','+'"'+pwd+'"'+"\r\n"
-        print(txData)
+        #print(txData)
         retData = self._sendToWIZFI360(txData, delay=15)
         print(".....")
         print("TEST : ",retData)
         if(retData!=None):
-            if "+CWJAP" in retData:
+            if "+CWJAP_CUR" in retData:
                 if "1" in retData:
                     return WIZFI360_WIFI_DISCONNECTED
                 elif "2" in retData:
@@ -371,6 +374,7 @@ class WIZFI360:
                 #else:
                 #    return None
             #elif WIZFI360_WIFI_CONNECTED in retData:
+
             if WIZFI360_WIFI_CONNECTED in retData:
                 if WIZFI360_WIFI_GOT_IP_CONNECTED in retData:
                     if WIZFI360_OK_STATUS in retData:
@@ -403,7 +407,7 @@ class WIZFI360:
         else:
             return False
 
-    def _createTCPConnection(self, link, port=80):
+    def _createTCP_UDPConnection(self, mode,link, port=80,keep_alive=None):
         """
         This fucntion use to create connect between WIZFI360 and Host.
         Just like create a socket before complete the HTTP Get/Post operation.
@@ -413,11 +417,14 @@ class WIZFI360:
             True on successfully create and establish a socket connection.
         """
         #self._sendToWIZFI360("AT+CIPMUX=0")
-        txData="AT+CIPSTART="+'"'+"TCP"+'"'+','+'"'+link+'"'+','+str(port)+"\r\n"
-        #print(txData)
+        if(keep_alive != None):
+            txData="AT+CIPSTART="+'"'+mode+'"'+','+'"'+link+'"'+','+str(port)+','+str(keep_alive)+"\r\n"
+        else:
+            txData="AT+CIPSTART="+'"'+mode+'"'+','+'"'+str(link)+'"'+','+str(port)+"\r\n"+"\r\n"
+        #print("ret txData: ",txData)
         retData = self._sendToWIZFI360(txData)
         #print(".....")
-        #print(retData)
+        #print("ret retData : ",retData)
         if(retData != None):
             if WIZFI360_OK_STATUS in retData:
                 return True
@@ -425,7 +432,24 @@ class WIZFI360:
                 return False
         else:
             False
-    
+            
+    def doSendData(self,data) :
+        txData="AT+CIPSEND="+str(len(data))+"\r\n"
+        retData = self._sendToWIZFI360(txData)
+        if(retData != None):
+            if b">" in retData:
+                retData = self._sendToWIZFI360(data, delay=2)
+                #print("GET :",retData)
+                #self._sendToWIZFI360("AT+CIPCLOSE\r\n")
+                
+                return retData
+            else:
+                
+                return 0, None
+        else:
+            return 0, None
+       
+   
     def doHttpGet(self,host,path,user_agent, port=80):
         """
         This fucntion use to complete a HTTP Get operation
@@ -441,18 +465,12 @@ class WIZFI360:
             On failed return 0 and None
         
         """
-        if(self._createTCPConnection(host, port) == True):
+        if(self._createTCP_UDPConnection("TCP",host, port) == True):
             self._createHTTPParseObj()
-            #getHeader="GET "+path+" HTTP/1.1\r\n"+"Host: "+host+":"+str(port)+"\r\n"+"User-Agent: "+user_agent+"\r\n"+"\r\n";
-            #getHeader="GET "+path+" HTTP/1.1\r\n"+"Host: "+host+"\r\n"+"User-Agent: "+user_agent+"\r\n"+"\r\n";
             if user_agent == None:
                 getHeader="GET "+path+" HTTP/1.1\r\n"+"Host: "+host+"\r\n"+"\r\n";
             else:
                 getHeader="GET "+path+" HTTP/1.1\r\n"+"Host: "+host+"\r\n"+"User-Agent: "+user_agent+"\r\n"+"\r\n";
-            
-            
-            
-            #print(getHeader,len(getHeader))
             txData="AT+CIPSEND="+str(len(getHeader))+"\r\n"
             retData = self._sendToWIZFI360(txData)
             #print("HTTP_GET : ",retData)
@@ -474,8 +492,7 @@ class WIZFI360:
             self._sendToWIZFI360("AT+CIPCLOSE\r\n")
             return 0, None
             
-        
-    #def doHttpPost(self,host,path,content_type,content,user_agent="RPi-Pico",port=80):
+    
     def doHttpPost(self,host,path,content_type,content,user_agent,port=80):
         """
         This fucntion use to complete a HTTP Post operation
@@ -493,7 +510,7 @@ class WIZFI360:
             On failed return 0 and None
         
         """
-        if(self._createTCPConnection(host, port) == True):
+        if(self._createTCP_UDPConnection("TCP",host, port) == True):
             self._createHTTPParseObj()
             if user_agent == None:
                 #postHeader="POST "+path+" HTTP/1.1\r\n"+"Host: "+host+"\r\n"+"User-Agent: "+"Content-Type: "+content_type+"\r\n"+"Content-Length: "+str(len(content))+"\r\n"+"\r\n"+content+"\r\n";
@@ -527,3 +544,4 @@ class WIZFI360:
         print('Destructor called, WIZFI360 deleted.')
         pass
         
+
