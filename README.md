@@ -21,7 +21,7 @@ This project is for wizfi360-EVB-Pico
 1. First, import the library of the function you want to use from the *.uf2(PC) to your board. To uploading a file to using Thonny IDE, follow these next steps.
 ![1](https://user-images.githubusercontent.com/9648281/194994507-58bb17fd-8245-4fec-806a-a89d6bfc1f04.JPG)
 
-2. Select httpParser.py and wizfi360.py among your PC files, right-click and select "upload to /".
+2. Select httpParser.py and wizfi360.py among your PC files, right-click and select "upload to /".      
 ![2](https://user-images.githubusercontent.com/9648281/194994514-e7478425-6b2d-4cac-b096-33dcaf1ecc43.jpg)
 
 
